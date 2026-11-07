@@ -31,6 +31,7 @@ jobs:
 
       - name: Prepare web assets
         run: |
+          set -euo pipefail
           mkdir -p www
           cp index.html www/index.html
 
@@ -51,6 +52,11 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
+
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
 
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/tawzee-release.jks
           test -s android/app/tawzee-release.jks
@@ -78,7 +84,12 @@ jobs:
 
       - name: Build signed Release APK
         working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          set -euo pipefail
           chmod +x gradlew
           ./gradlew --no-daemon clean assembleRelease
 
@@ -87,8 +98,10 @@ jobs:
           set -euo pipefail
           APK="android/app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
+
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -n "$APKSIGNER"
+
           "$APKSIGNER" verify --verbose --print-certs "$APK"
 
       - name: Upload signed APK
@@ -97,4 +110,5 @@ jobs:
           name: tawzee-altaheen-release-signed
           path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
-          retention-days: 14 
+          retention-days: 14
+          

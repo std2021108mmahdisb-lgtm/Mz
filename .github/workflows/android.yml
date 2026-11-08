@@ -1,5 +1,4 @@
-
-name: Build Signed Android Release
+Name: Build Signed Android Release
 
 on:
   push:
@@ -41,8 +40,15 @@ jobs:
       - name: Add Android platform
         run: npx cap add android
 
-      - name: Sync Capacitor
-        run: npx cap sync android
+      - name: Sync and Verify Android Web Assets
+        run: |
+          set -euo pipefail
+          test -s index.html
+          test -s www/index.html
+          npx cap sync android
+          test -s android/app/src/main/assets/public/index.html
+          cmp www/index.html android/app/src/main/assets/public/index.html
+          echo "WEB_ASSETS_VERIFIED"
 
       - name: Configure signing
         env:
